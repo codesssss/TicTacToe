@@ -10,6 +10,9 @@ public class GameSession {
     private String[][] board = new String[3][3];
     private String currentPlayer;
 
+    private String lastMoveForPlayer1 = "";
+    private String lastMoveForPlayer2 = "";
+
     public GameSession(String player1, String player2) {
         this.player1 = player1;
         this.player2 = player2;
@@ -23,6 +26,11 @@ public class GameSession {
 
     public boolean makeMove(int x, int y, String username) {
         if (board[x][y].isEmpty() && currentPlayer.equals(username)) {
+            if (username.equals(player1)) {
+                lastMoveForPlayer1 = x + "," + y;
+            } else {
+                lastMoveForPlayer2 = x + "," + y;
+            }
             board[x][y] = currentPlayer.equals(player1) ? "X" : "O";
             switchPlayer();
             return true;
@@ -72,6 +80,14 @@ public class GameSession {
             }
         }
         return true;
+    }
+
+    public String getLatestMoveFor(String username) {
+        if (username.equals(player1)) {
+            return lastMoveForPlayer1;
+        } else {
+            return lastMoveForPlayer2;
+        }
     }
 
 }

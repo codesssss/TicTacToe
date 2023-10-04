@@ -7,10 +7,10 @@ package org.tic;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 
 public class TicTacToeGUI {
 
@@ -22,7 +22,11 @@ public class TicTacToeGUI {
     private JButton quitButton;
     private JLabel currentPlayerLabel;
 
-    public TicTacToeGUI() {
+    private TicTacToeClient ticTacToeClient;
+
+    public TicTacToeGUI(String username, String serverIP, int serverPort) throws NotBoundException, RemoteException {
+        this.ticTacToeClient = new TicTacToeClient(username, serverIP, serverPort);
+
         frame = new JFrame("Distributed Tic-Tac-Toe");
         frame.setSize(700, 450);  // Adjusted frame size for better appearance
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -134,7 +138,20 @@ public class TicTacToeGUI {
     }
 
     public static void main(String[] args) {
-        new TicTacToeGUI();
+        if (args.length < 3) {
+            System.out.println("Usage: java Client <username> <server_ip> <server_port>");
+            return;
+        }
+
+        String username = args[0];
+        String serverIP = args[1];
+        int serverPort = Integer.parseInt(args[2]);
+
+        try {
+            TicTacToeGUI ticTacToeGUI = new TicTacToeGUI(username, serverIP, serverPort);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
 
