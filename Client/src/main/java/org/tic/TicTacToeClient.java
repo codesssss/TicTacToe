@@ -136,6 +136,7 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
 //        TicTacToeClient ticTacToeClient = new TicTacToeClient(username, serverIP, serverPort);
         TicTacToeClient ticTacToeClient = new TicTacToeClient("jack", "localhost", 1099);
         TicTacToeGUI ticTacToeGUI = new TicTacToeGUI(ticTacToeClient);
+        ticTacToeClient.setTicTacToeGUI(ticTacToeGUI);
         ticTacToeClient.connect();
     }
 }
