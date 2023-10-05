@@ -37,8 +37,9 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 GameSession session = new GameSession(player1, player2);
                 activeGames.put(player1, session);
                 activeGames.put(player2, session);
-                player1.getClientCallback().notifyMatchStarted(player1.getUsername(), player1.getSymbol());
-                player2.getClientCallback().notifyMatchStarted(player2.getUsername(), player2.getSymbol());
+                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol());
+                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol());
+                session.getCurrentPlayer().getClientCallback().notifyTurn();
             }
         }
     }
@@ -141,22 +142,22 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         return null;
     }
 
-    private void startHeartbeatCheck() {
-        scheduler.scheduleAtFixedRate(() -> {
-            List<Player> disconnectedPlayers = new ArrayList<>();
-            for (Player player : activeGames.keySet()) {
-                try {
-                    player.getClientCallback().ping();  // A simple method on the client's side to check if it's alive.
-                } catch (RemoteException e) {
-                    disconnectedPlayers.add(player);
-                }
-            }
-
-            for (Player player : disconnectedPlayers) {
-                handlePlayerDisconnected(player);
-            }
-        }, 0, 10, TimeUnit.SECONDS);  // Run every 10 seconds
-    }
+//    private void startHeartbeatCheck() {
+//        scheduler.scheduleAtFixedRate(() -> {
+//            List<Player> disconnectedPlayers = new ArrayList<>();
+//            for (Player player : activeGames.keySet()) {
+//                try {
+//                    player.getClientCallback().ping();  // A simple method on the client's side to check if it's alive.
+//                } catch (RemoteException e) {
+//                    disconnectedPlayers.add(player);
+//                }
+//            }
+//
+//            for (Player player : disconnectedPlayers) {
+//                handlePlayerDisconnected(player);
+//            }
+//        }, 0, 10, TimeUnit.SECONDS);  // Run every 10 seconds
+//    }
 
 
     public void handlePlayerDisconnected(Player player) {

@@ -2,6 +2,7 @@ package org.tic.pojo;
 
 import org.tic.ENUM.PlayerStatus;
 
+import java.io.Serializable;
 import java.util.concurrent.ScheduledFuture;
 
 import org.tic.ClientCallback;
@@ -10,7 +11,7 @@ import org.tic.ClientCallback;
  * @author Xuhang Shi
  * @date 4/10/2023 10:00 pm
  */
-public class Player {
+public class Player implements Serializable {
     private String username;
     private PlayerStatus status;
     private ScheduledFuture<?> disconnectFuture;

@@ -16,8 +16,6 @@ public class GameSession {
     private String[][] board = new String[3][3];
     private List<Message> messages = new Vector<>();
     private Player currentPlayer;
-    private String lastMoveForPlayer1 = "";
-    private String lastMoveForPlayer2 = "";
 
     public GameSession(Player player1, Player player2) {
         this.player1 = player1;
@@ -42,13 +40,8 @@ public class GameSession {
 
     public boolean makeMove(int x, int y, String username) throws RemoteException {
         if (board[x][y].isEmpty() && currentPlayer.getUsername().equals(username)) {
-            if (username.equals(player1.getUsername())) {
-                lastMoveForPlayer1 = x + "," + y;
-                board[x][y] = "X";
-            } else {
-                lastMoveForPlayer2 = x + "," + y;
-                board[x][y] = "O";
-            }
+
+            board[x][y]=currentPlayer.getSymbol();
 
             // After move, check for win or draw
             if (isWinner(username)) {
@@ -57,8 +50,8 @@ public class GameSession {
 
                 winner.getClientCallback().notifyWinner(username);
                 loser.getClientCallback().notifyWinner(username);
-                player1.setStatus(PlayerStatus.ACTIVE);
-                player2.setStatus(PlayerStatus.ACTIVE);
+//                player1.setStatus(PlayerStatus.ACTIVE);
+//                player2.setStatus(PlayerStatus.ACTIVE);
 
                 // TODO: End the game session
             } else if (isDraw()) {
@@ -68,6 +61,7 @@ public class GameSession {
                 // TODO: End the game session
             } else {
                 getOtherPlayer(username).getClientCallback().updateOpponentMove(x, y);
+                getOtherPlayer(username).getClientCallback().notifyTurn();
             }
 
             switchPlayer();
@@ -77,13 +71,11 @@ public class GameSession {
         return false;
     }
 
-    public boolean sendMessage(String username, String message) throws RemoteException {
+    public void sendMessage(String username, String message) throws RemoteException {
         if (player1.getUsername().equals(username)) {
             player2.getClientCallback().receiveChatMessage(new Message(username,message));
-            return true;
         } else {
             player1.getClientCallback().receiveChatMessage(new Message(username,message));
-            return true;
         }
     }
 
@@ -104,7 +96,7 @@ public class GameSession {
     }
 
     public boolean isWinner(String username) {
-        String symbol = (username.equals(player1)) ? "X" : "O";
+        String symbol=getPlayer(username).getSymbol();
         // Check rows, columns and diagonals
         for (int i = 0; i < 3; i++) {
             if (board[i][0].equals(symbol) && board[i][1].equals(symbol) && board[i][2].equals(symbol)) {
@@ -135,14 +127,9 @@ public class GameSession {
         return true;
     }
 
-    public String getLatestMoveFor(String username) {
-        if (username.equals(player1)) {
-            return lastMoveForPlayer1;
-        } else {
-            return lastMoveForPlayer2;
-        }
+    public Player getCurrentPlayer() {
+        return currentPlayer;
     }
-
     public List<Message> getMessages() {
         return messages;
     }

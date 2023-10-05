@@ -1,10 +1,12 @@
 package org.tic.pojo;
 
+import java.io.Serializable;
+
 /**
  * @author Xuhang Shi
  * @date 5/10/2023 4:31 pm
  */
-public class Message {
+public class Message implements Serializable {
     String username;
     String message;
     Integer rank;

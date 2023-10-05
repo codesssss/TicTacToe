@@ -1,7 +1,6 @@
 package org.tic;
 
 import org.tic.pojo.Message;
-import org.tic.pojo.Player;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -19,7 +18,7 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
     private IRemoteTic server;
     private String username;
     private String symbol;
-    private TicTacToeGUI ticTacToeGUI;
+    private TicTacToeListener listener;
 
     public TicTacToeClient(String username, String serverIP, int serverPort) throws RemoteException, NotBoundException {
         this.username = username;
@@ -27,84 +26,83 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         server = (IRemoteTic) registry.lookup("TicTacToeService");
     }
 
+    public void setListener(TicTacToeListener listener) {
+        this.listener = listener;
+    }
+
     @Override
     public void notifyMatchStarted(String opponentName, String yourSymbol) throws RemoteException {
         this.symbol = yourSymbol;
-        // Update GUI to show the match has started and your symbol
-        ticTacToeGUI.updateMatchStarted(opponentName, yourSymbol);
+        if (listener != null) {
+            listener.onMatchStarted(opponentName, yourSymbol);
+        }
     }
 
     @Override
     public void notifyTurn() throws RemoteException {
-        ticTacToeGUI.displayTurn();
+        if (listener != null) {
+            listener.onTurnNotified();
+        }
     }
 
     @Override
     public void updateOpponentMove(int x, int y) throws RemoteException {
-        // Update GUI to show the opponent's move
-        ticTacToeGUI.updateOpponentMove(x, y);
+        if (listener != null) {
+            listener.onOpponentMoved(x, y);
+        }
     }
 
     @Override
     public void notifyWinner(String winnerName) throws RemoteException {
-        // Update GUI to show the winner
-        ticTacToeGUI.displayWinner(winnerName);
+        if (listener != null) {
+            listener.onWinnerDeclared(winnerName);
+        }
     }
 
     @Override
     public void notifyDraw() throws RemoteException {
-        // Update GUI to show the match is a draw
-        ticTacToeGUI.displayDraw();
+        if (listener != null) {
+            listener.onMatchDraw();
+        }
     }
 
     @Override
     public void receiveChatMessage(Message message) throws RemoteException {
-        // Update GUI to display the received chat message
-        ticTacToeGUI.updateChat(message);
+        if (listener != null) {
+            listener.onChatMessageReceived(message);
+        }
     }
 
     @Override
     public void ping() throws RemoteException {
-        // Nothing to do here. Just to check if the client is alive.
+        // Do nothing here.
     }
 
     @Override
     public void updateBoard(String[][] board) {
-        ticTacToeGUI.updateBoard(board);
+        if (listener != null) {
+            listener.onBoardUpdated(board);
+        }
     }
 
     @Override
     public void updateMessages(List<Message> messages) {
-        ticTacToeGUI.updateMessages(messages);
+        if (listener != null) {
+            listener.onMessagesUpdated(messages);
+        }
     }
 
-
-    public void connect() throws RemoteException {
-        if(server.connect(this.username, this)){
-            ticTacToeGUI.displayWaiting();
-        }else {
-
-        }
+    public void connectServer() throws RemoteException {
+        server.connect(this.username, this);
+        listener.onDisplayWaiting();
     }
 
     public String getSymbol() {
         return symbol;
     }
 
-    public void setSymbol(String symbol) {
-        this.symbol = symbol;
-    }
-
     public void sendChatMessage(String message) throws RemoteException {
         server.sendMessage(username, message);
-    }
-
-    public void setServer(IRemoteTic server) {
-        this.server = server;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
     }
 
     public IRemoteTic getServer() {
@@ -115,28 +113,20 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         return username;
     }
 
-    public TicTacToeGUI getTicTacToeGUI() {
-        return ticTacToeGUI;
-    }
-
-    public void setTicTacToeGUI(TicTacToeGUI ticTacToeGUI) {
-        this.ticTacToeGUI = ticTacToeGUI;
-    }
 
     public static void main(String[] args) throws NotBoundException, RemoteException {
-//        if (args.length < 3) {
-//            System.out.println("Usage: java Client <username> <server_ip> <server_port>");
-//            return;
-//        }
-//
-//        String username = args[0];
-//        String serverIP = args[1];
-//        int serverPort = Integer.parseInt(args[2]);
+        if (args.length < 3) {
+            System.out.println("Usage: java Client <username> <server_ip> <server_port>");
+            return;
+        }
 
-//        TicTacToeClient ticTacToeClient = new TicTacToeClient(username, serverIP, serverPort);
-        TicTacToeClient ticTacToeClient = new TicTacToeClient("jack", "localhost", 1099);
+        String username = args[0];
+        String serverIP = args[1];
+        int serverPort = Integer.parseInt(args[2]);
+
+        TicTacToeClient ticTacToeClient = new TicTacToeClient(username, serverIP, serverPort);
+//        TicTacToeClient ticTacToeClient = new TicTacToeClient("jack", "localhost", 1099);
         TicTacToeGUI ticTacToeGUI = new TicTacToeGUI(ticTacToeClient);
-        ticTacToeClient.setTicTacToeGUI(ticTacToeGUI);
-        ticTacToeClient.connect();
+        ticTacToeClient.connectServer();
     }
 }
