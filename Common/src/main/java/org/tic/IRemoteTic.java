@@ -1,5 +1,6 @@
 package org.tic;
 
+import org.tic.ENUM.GameStatus;
 import org.tic.pojo.Player;
 
 import java.rmi.Remote;
@@ -12,15 +13,13 @@ import java.rmi.RemoteException;
 public interface IRemoteTic extends Remote {
     boolean makeMove(int x, int y, String username) throws RemoteException;
 
-    String[][] getBoard() throws RemoteException;
-
     void joinQueue(Player player) throws RemoteException;
-
-    GameStatus checkMatchStatus(String username) throws RemoteException;
 
     String[][] getBoard(String username) throws RemoteException;
 
-    void connect(String username) throws RemoteException;
+    boolean connect(String username, ClientCallback callback) throws RemoteException;
+
+    void sendMessage(String username, String message) throws RemoteException;
     //New Move
     //Board
 }

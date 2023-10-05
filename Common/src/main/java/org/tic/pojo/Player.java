@@ -2,8 +2,9 @@ package org.tic.pojo;
 
 import org.tic.ENUM.PlayerStatus;
 
-import java.util.Timer;
 import java.util.concurrent.ScheduledFuture;
+
+import org.tic.ClientCallback;
 
 /**
  * @author Xuhang Shi
@@ -14,11 +15,31 @@ public class Player {
     private PlayerStatus status;
     private ScheduledFuture<?> disconnectFuture;
     private Integer score;
+    private Integer rank;
+    private String symbol;
+    private ClientCallback clientCallback;
 
-    public Player(String username) {
+    public Player(String username, ClientCallback clientCallback) {
+        this.clientCallback = clientCallback;
         this.username = username;
-        this.score=0;
-        this.status=PlayerStatus.ACTIVE;
+        this.score = 0;
+        this.status = PlayerStatus.ACTIVE;
+    }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public void setSymbol(String symbol) {
+        this.symbol = symbol;
+    }
+
+    public Integer getRank() {
+        return rank;
+    }
+
+    public void setRank(Integer rank) {
+        this.rank = rank;
     }
 
     public String getUsername() {
@@ -51,5 +72,13 @@ public class Player {
 
     public void setDisconnectFuture(ScheduledFuture<?> disconnectFuture) {
         this.disconnectFuture = disconnectFuture;
+    }
+
+    public ClientCallback getClientCallback() {
+        return clientCallback;
+    }
+
+    public void setClientCallback(ClientCallback clientCallback) {
+        this.clientCallback = clientCallback;
     }
 }

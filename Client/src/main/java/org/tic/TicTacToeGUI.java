@@ -5,7 +5,11 @@ package org.tic;
  * @date 4/10/2023 7:05 pm
  */
 
+import org.tic.pojo.Message;
+
+import java.util.List;
 import javax.swing.*;
+import javax.swing.text.BadLocationException;
 import java.awt.*;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
@@ -21,12 +25,12 @@ public class TicTacToeGUI {
     private JPanel timerPanel;
     private JButton quitButton;
     private JLabel currentPlayerLabel;
-
     private TicTacToeClient ticTacToeClient;
 
-    public TicTacToeGUI(String username, String serverIP, int serverPort) throws NotBoundException, RemoteException {
-        this.ticTacToeClient = new TicTacToeClient(username, serverIP, serverPort);
+    private boolean isMyTurn = false;
 
+    public TicTacToeGUI(TicTacToeClient ticTacToeClient) {
+        this.ticTacToeClient = ticTacToeClient;
         frame = new JFrame("Distributed Tic-Tac-Toe");
         frame.setSize(700, 450);  // Adjusted frame size for better appearance
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -91,6 +95,31 @@ public class TicTacToeGUI {
                 boardPanel.add(boardButtons[i][j]);
             }
         }
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                int finalI = i;
+                int finalJ = j;
+                boardButtons[i][j].addActionListener(e -> {
+                    JButton clickedButton = (JButton) e.getSource();
+
+                    if (!clickedButton.getText().isEmpty()) {
+                        return;
+                    }
+                    if (isMyTurn) {
+                        try {
+                            if (ticTacToeClient.getServer().makeMove(finalI, finalJ, ticTacToeClient.getUsername())) {
+                                boardButtons[finalI][finalJ].setText(ticTacToeClient.getSymbol().equals("X") ? "X" : "O");
+                                isMyTurn = false;
+                            }
+                        } catch (RemoteException ex) {
+                            ex.printStackTrace();
+                        }
+                    } else {
+                        return;
+                    }
+                });
+            }
+        }
         boardContainer.add(boardPanel, BorderLayout.CENTER);
         centerPanel.add(boardContainer);
 
@@ -109,6 +138,16 @@ public class TicTacToeGUI {
         chatInput.setText("Type your message here");
         chatInput.setForeground(Color.GRAY);
         chatInput.setFont(new Font("Arial", Font.ITALIC, 12));
+
+        chatInput.addActionListener(e -> {
+            String message = chatInput.getText();
+            if (!message.isEmpty()) {
+                // Send chat message to server (assuming the server has a method to handle chat)
+                // e.g., client.sendMessageToServer(message);
+                chatArea.append("You: " + message + "\n");
+                chatInput.setText("");
+            }
+        });
         chatInput.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -137,21 +176,89 @@ public class TicTacToeGUI {
         frame.setVisible(true);
     }
 
-    public static void main(String[] args) {
-        if (args.length < 3) {
-            System.out.println("Usage: java Client <username> <server_ip> <server_port>");
-            return;
-        }
-
-        String username = args[0];
-        String serverIP = args[1];
-        int serverPort = Integer.parseInt(args[2]);
-
-        try {
-            TicTacToeGUI ticTacToeGUI = new TicTacToeGUI(username, serverIP, serverPort);
-        } catch (Exception e) {
-            e.printStackTrace();
+    public void updateBoard(String[][] board) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                boardButtons[i][j].setText(board[i][j]);
+            }
         }
     }
+
+
+    public void updateChat(Message message) {
+        String formattedMessage;
+        if (message.getRank() != null) {
+            formattedMessage = "Rank#" + message.getRank() + " " + message.getUsername() + ": " + message.getMessage();
+        } else {
+            formattedMessage = message.getUsername() + ": " + message.getMessage();
+        }
+
+        // Check the number of lines and remove the oldest message if necessary
+        int numLines = chatArea.getLineCount();
+        if (numLines >= 10) {
+            try {
+                int end = chatArea.getLineEndOffset(0); // end offset of the first line
+                chatArea.replaceRange("", 0, end); // remove the first line
+            } catch (BadLocationException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        // Add the new message
+        chatArea.append(formattedMessage + "\n");
+    }
+
+
+
+    public void displayDraw() {
+        JOptionPane.showMessageDialog(frame, "The game ended in a draw!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public void displayWinner(String winnerName) {
+        JOptionPane.showMessageDialog(frame, winnerName + " wins the game!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public void updateOpponentMove(int x, int y) {
+        // Assuming that the opponent has the opposite symbol of the client
+        String opponentSymbol = ticTacToeClient.getUsername().equals("X") ? "O" : "X";
+        boardButtons[x][y].setText(opponentSymbol);
+    }
+
+    public void updateMatchStarted(String opponentName, String yourSymbol) {
+        currentPlayerLabel.setText("Match started! Opponent: " + opponentName + ". Your symbol: " + yourSymbol);
+    }
+
+    public void displayTurn() {
+        isMyTurn = true;
+        JOptionPane.showMessageDialog(frame, "It's your turn!", "Your Move", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public void displayWaiting() {
+        JOptionPane.showMessageDialog(frame, "Waiting for game", "Your Move", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public void displayConnectionFailed() {
+        isMyTurn = true;
+        JOptionPane.showMessageDialog(frame, "Failed", "Your Move", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    public void updateMessages(List<Message> messages) {
+        chatArea.setText("");  // Clear the existing chat
+
+        int start = Math.max(0, messages.size() - 10);  // Get the starting index to fetch the last 10 messages
+
+        for (int i = start; i < messages.size(); i++) {
+            Message msg = messages.get(i);
+            String formattedMessage;
+            if (msg.getRank() != null) {
+                formattedMessage = "Rank#" + msg.getRank() + " " + msg.getUsername() + ": " + msg.getMessage();
+            } else {
+                formattedMessage = msg.getUsername() + ": " + msg.getMessage();
+            }
+            chatArea.append(formattedMessage + "\n");
+        }
+    }
+
+
 }
 
