@@ -28,8 +28,9 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
 
     @Override
-    public void joinQueue(Player player) throws RemoteException {
+    public void joinQueue(String username) throws RemoteException {
         synchronized (waitingPlayers) {
+            Player player=findPlayerByUsername(username);
             waitingPlayers.add(player);
             if (waitingPlayers.size() >= 2) {
                 Player player1 = waitingPlayers.remove(0);
@@ -39,7 +40,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 activeGames.put(player2, session);
                 player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol());
                 player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol());
-                session.getCurrentPlayer().getClientCallback().notifyTurn();
+                session.startGame();
             }
         }
     }
@@ -64,7 +65,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         if (session != null) {
             return session.getBoard();
         }
-        return new String[3][3];  // or return null or an error status
+        return new String[3][3];
     }
 
     @Override
@@ -75,7 +76,6 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         } catch (RemoteException e) {
             handlePlayerDisconnected(gameSession.getPlayer(username));
         }
-        //TODO: RANK
     }
 
     @Override
@@ -100,6 +100,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
             try {
                 player = new Player(username, clientCallback);
                 joinQueue(player);
+                LeaderboardManager.addPlayer(player);
                 return true;
             } catch (Exception e) {
                 return false; // Failed to add a new player for some reason.
@@ -109,15 +110,21 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         return false; // Default return in case no conditions above are met.
     }
 
-
-//    public String retrieveMessage(GameSession gameSession) throws RemoteException {
-//        List<String> messages = gameSession.getMessages();
-//        if (!messages.isEmpty()) {
-//            return messages.get(messages.size() - 1);
-//        } else {
-//            return null;
-//        }
-//    }
+    public void joinQueue(Player player) throws RemoteException {
+        synchronized (waitingPlayers) {
+            waitingPlayers.add(player);
+            if (waitingPlayers.size() >= 2) {
+                Player player1 = waitingPlayers.remove(0);
+                Player player2 = waitingPlayers.remove(0);
+                GameSession session = new GameSession(player1, player2);
+                activeGames.put(player1, session);
+                activeGames.put(player2, session);
+                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol());
+                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol());
+                session.startGame();
+            }
+        }
+    }
 
     private GameSession findGameSessionByPlayer(String username) {
         for (Map.Entry<Player, GameSession> entry : activeGames.entrySet()) {

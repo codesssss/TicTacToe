@@ -20,6 +20,8 @@ public interface ClientCallback extends Remote {
     void updateBoard(String[][] board) throws RemoteException;
     void updateMessages(List<Message> messages) throws RemoteException;
     void ping() throws RemoteException;
+    void resetPlayerLabel(String rank,String name,String symbol) throws RemoteException;
+
 
 }
 

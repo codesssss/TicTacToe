@@ -59,6 +59,10 @@ public class Player implements Serializable {
         this.score = score;
     }
 
+    public void addScore(int delta) {
+        this.score += delta;
+    }
+
     public void setStatus(PlayerStatus status) {
         this.status = status;
     }

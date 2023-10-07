@@ -13,7 +13,7 @@ import java.rmi.RemoteException;
 public interface IRemoteTic extends Remote {
     boolean makeMove(int x, int y, String username) throws RemoteException;
 
-    void joinQueue(Player player) throws RemoteException;
+    void joinQueue(String username) throws RemoteException;
 
     String[][] getBoard(String username) throws RemoteException;
 

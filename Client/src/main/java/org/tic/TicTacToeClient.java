@@ -2,6 +2,7 @@ package org.tic;
 
 import org.tic.pojo.Message;
 
+import javax.swing.*;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -16,9 +17,10 @@ import java.util.List;
 public class TicTacToeClient extends UnicastRemoteObject implements ClientCallback {
 
     private IRemoteTic server;
+    private Integer rank;
     private String username;
     private String symbol;
-    private TicTacToeListener listener;
+    private TicTacToeGUI ticTacToeGUI;
 
     public TicTacToeClient(String username, String serverIP, int serverPort) throws RemoteException, NotBoundException {
         this.username = username;
@@ -26,50 +28,50 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         server = (IRemoteTic) registry.lookup("TicTacToeService");
     }
 
-    public void setListener(TicTacToeListener listener) {
-        this.listener = listener;
+    public void setTicTacToeGUI(TicTacToeGUI ticTacToeGUI) {
+        this.ticTacToeGUI = ticTacToeGUI;
     }
 
     @Override
     public void notifyMatchStarted(String opponentName, String yourSymbol) throws RemoteException {
         this.symbol = yourSymbol;
-        if (listener != null) {
-            listener.onMatchStarted(opponentName, yourSymbol);
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateMatchStarted(opponentName, yourSymbol));
         }
     }
 
     @Override
     public void notifyTurn() throws RemoteException {
-        if (listener != null) {
-            listener.onTurnNotified();
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.displayTurn());
         }
     }
 
     @Override
     public void updateOpponentMove(int x, int y) throws RemoteException {
-        if (listener != null) {
-            listener.onOpponentMoved(x, y);
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateOpponentMove(x, y));
         }
     }
 
     @Override
     public void notifyWinner(String winnerName) throws RemoteException {
-        if (listener != null) {
-            listener.onWinnerDeclared(winnerName);
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.displayWinner(winnerName));
         }
     }
 
     @Override
     public void notifyDraw() throws RemoteException {
-        if (listener != null) {
-            listener.onMatchDraw();
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.displayDraw());
         }
     }
 
     @Override
     public void receiveChatMessage(Message message) throws RemoteException {
-        if (listener != null) {
-            listener.onChatMessageReceived(message);
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateChat(message));
         }
     }
 
@@ -79,22 +81,29 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
     }
 
     @Override
+    public void resetPlayerLabel(String rank,String name,String symbol) throws RemoteException {
+        SwingUtilities.invokeLater(() -> ticTacToeGUI.changePlayerLabel(rank,name,symbol));
+        SwingUtilities.invokeLater(() -> ticTacToeGUI.resetAndStartTurnTimer());
+    }
+
+    @Override
     public void updateBoard(String[][] board) {
-        if (listener != null) {
-            listener.onBoardUpdated(board);
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateBoard(board));
         }
     }
 
     @Override
     public void updateMessages(List<Message> messages) {
-        if (listener != null) {
-            listener.onMessagesUpdated(messages);
+        if (ticTacToeGUI != null) {
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateMessages(messages));
         }
     }
 
+
     public void connectServer() throws RemoteException {
         server.connect(this.username, this);
-        listener.onDisplayWaiting();
+        SwingUtilities.invokeLater(()->ticTacToeGUI.displayWaiting());
     }
 
     public String getSymbol() {
@@ -111,6 +120,14 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
 
     public String getUsername() {
         return username;
+    }
+
+    public Integer getRank() {
+        return rank;
+    }
+
+    public void setRank(Integer rank) {
+        this.rank = rank;
     }
 
 
