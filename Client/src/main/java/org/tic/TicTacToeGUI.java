@@ -30,11 +30,11 @@ public class TicTacToeGUI {
     private JDialog waitingDialog;
     private TicTacToeClient ticTacToeClient;
     private boolean isMyTurn = false;
-    private Timer turnTimer;
+    private volatile static Timer turnTimer;
     private int turnTimeLeft = 20;
 
 
-    public TicTacToeGUI(TicTacToeClient ticTacToeClient) {
+    public TicTacToeGUI(TicTacToeClient ticTacToeClient) throws RemoteException {
         ticTacToeClient.setTicTacToeGUI(this);
         this.ticTacToeClient = ticTacToeClient;
         frame = new JFrame("Distributed Tic-Tac-Toe");
@@ -157,8 +157,19 @@ public class TicTacToeGUI {
         chatInput.addActionListener(e -> {
             String message = chatInput.getText();
             if (!message.isEmpty()) {
-                // Send chat message to server (assuming the server has a method to handle chat)
-                // e.g., client.sendMessageToServer(message);
+
+                // Check the number of lines and remove the oldest message if necessary
+                int numLines = chatArea.getLineCount();
+                if (numLines > 10) {
+                    try {
+                        int end = chatArea.getLineEndOffset(0); // end offset of the first line
+                        chatArea.replaceRange("", 0, end); // remove the first line
+                    } catch (BadLocationException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+
+                // Add the new message
                 chatArea.append("You: " + message + "\n");
                 chatInput.setText("");
                 try {
@@ -168,6 +179,7 @@ public class TicTacToeGUI {
                 }
             }
         });
+
         chatInput.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -194,6 +206,8 @@ public class TicTacToeGUI {
         frame.add(centerPanel, BorderLayout.CENTER);
 
         frame.setVisible(true);
+
+        ticTacToeClient.connectServer();
     }
 
     public void updateBoard(String[][] board) {
@@ -215,7 +229,7 @@ public class TicTacToeGUI {
 
         // Check the number of lines and remove the oldest message if necessary
         int numLines = chatArea.getLineCount();
-        if (numLines >= 10) {
+        if (numLines > 10) {
             try {
                 int end = chatArea.getLineEndOffset(0); // end offset of the first line
                 chatArea.replaceRange("", 0, end); // remove the first line
@@ -228,6 +242,7 @@ public class TicTacToeGUI {
         chatArea.append(formattedMessage + "\n");
     }
 
+
     public void changePlayerLabel(String rank, String name, String symbol) {
         currentPlayerLabel.setText("Rank#" + rank + " " + name + "'s turn. symbol: " + "(" + symbol + "）");
     }
@@ -235,8 +250,6 @@ public class TicTacToeGUI {
 
     public void displayTurn() {
         isMyTurn = true;
-        currentPlayerLabel.setText("Rank#" + ticTacToeClient.getRank() + " " + ticTacToeClient.getUsername() + "'s turn. symbol: " + "(" + ticTacToeClient.getSymbol() + "）");
-//        JOptionPane.showMessageDialog(frame, "It's your turn!", "Your Move", JOptionPane.INFORMATION_MESSAGE);
         resetAndStartTurnTimer();
     }
 
@@ -247,6 +260,10 @@ public class TicTacToeGUI {
     }
 
     private void executeRandomMove() {
+        if (!isMyTurn) {
+            return;
+        }
+
         List<Point> availableMoves = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -270,27 +287,9 @@ public class TicTacToeGUI {
     }
 
 
-    private void showWinnerDialog(String winnerName) {
-        JDialog dialog = new JDialog(frame, "Game Over", true);
-        dialog.setLayout(new BorderLayout());
-
-        JLabel label = new JLabel(winnerName + " wins the game!");
-        label.setHorizontalAlignment(JLabel.CENTER);
-        label.setFont(new Font("Arial", Font.BOLD, 16));  // Optionally set a bold font
-        dialog.add(label, BorderLayout.CENTER);
-
-        JButton closeButton = new JButton("Close");
-        closeButton.addActionListener(e -> dialog.dispose());
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(closeButton);
-        dialog.add(buttonPanel, BorderLayout.SOUTH);
-
-        dialog.setSize(300, 150);
-        dialog.setLocationRelativeTo(frame);  // Center the dialog w.r.t. main frame
-        dialog.setVisible(true);
-    }
-
     public void displayWinner(String winnerName) {
+        turnTimer.stop();
+        timerValue.setText("20");
         Object[] options = {"Find New Game", "Quit"};
         int n = JOptionPane.showOptionDialog(frame,
                 winnerName + " wins the game!\nWhat would you like to do next?",
@@ -320,11 +319,43 @@ public class TicTacToeGUI {
         }
     }
 
+    public void displayDraw() {
+        turnTimer.stop();
+        timerValue.setText("20");
+        Object[] options = {"Find New Game", "Quit"};
+        int n = JOptionPane.showOptionDialog(frame,
+                "The game is a draw!\nWhat would you like to do next?",
+                "Game Over",
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[1]);
+
+        switch (n) {
+            case 0: // Find New Game
+                clearBoard();
+                clearChat();
+                currentPlayerLabel.setText("Waiting for game..."); // Update the label
+                try {
+                    ticTacToeClient.getServer().joinQueue(ticTacToeClient.getUsername());
+                } catch (RemoteException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(frame, "Error joining a new game!", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+                break;
+
+            case 1: // Quit
+                System.exit(0);
+                break;
+        }
+    }
 
     public void updateOpponentMove(int x, int y) {
         // Assuming that the opponent has the opposite symbol of the client
         String opponentSymbol = ticTacToeClient.getSymbol().equals("X") ? "O" : "X";
         boardButtons[x][y].setText(opponentSymbol);
+        boardButtons[x][y].setBackground(Color.GRAY);
     }
 
     public void updateMatchStarted(String opponentName, String yourSymbol) {
@@ -356,37 +387,6 @@ public class TicTacToeGUI {
             chatArea.append(formattedMessage + "\n");
         }
     }
-
-    public void displayDraw() {
-        Object[] options = {"Find New Game", "Quit"};
-        int n = JOptionPane.showOptionDialog(frame,
-                "The game is a draw!\nWhat would you like to do next?",
-                "Game Over",
-                JOptionPane.YES_NO_CANCEL_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                options,
-                options[1]);
-
-        switch (n) {
-            case 0: // Find New Game
-                clearBoard();
-                clearChat();
-                currentPlayerLabel.setText("Waiting for game..."); // Update the label
-                try {
-                    ticTacToeClient.getServer().joinQueue(ticTacToeClient.getUsername());
-                } catch (RemoteException ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(frame, "Error joining a new game!", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-                break;
-
-            case 1: // Quit
-                System.exit(0);
-                break;
-        }
-    }
-
 
     private void clearBoard() {
         for (int i = 0; i < 3; i++) {

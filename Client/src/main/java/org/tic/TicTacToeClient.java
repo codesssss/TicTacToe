@@ -33,8 +33,9 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
     }
 
     @Override
-    public void notifyMatchStarted(String opponentName, String yourSymbol) throws RemoteException {
+    public void notifyMatchStarted(String opponentName, String yourSymbol,int rank) throws RemoteException {
         this.symbol = yourSymbol;
+        this.rank=rank;
         if (ticTacToeGUI != null) {
             SwingUtilities.invokeLater(() -> ticTacToeGUI.updateMatchStarted(opponentName, yourSymbol));
         }
@@ -81,9 +82,14 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
     }
 
     @Override
-    public void resetPlayerLabel(String rank,String name,String symbol) throws RemoteException {
+    public void resetPlayerLabelAndTime(String rank, String name, String symbol) throws RemoteException {
         SwingUtilities.invokeLater(() -> ticTacToeGUI.changePlayerLabel(rank,name,symbol));
         SwingUtilities.invokeLater(() -> ticTacToeGUI.resetAndStartTurnTimer());
+    }
+
+    @Override
+    public void changeLabel(int rank, String name, String symbol) throws RemoteException {
+        SwingUtilities.invokeLater(() -> ticTacToeGUI.changePlayerLabel(String.valueOf(rank),name,symbol));
     }
 
     @Override
@@ -102,8 +108,16 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
 
 
     public void connectServer() throws RemoteException {
-        server.connect(this.username, this);
-        SwingUtilities.invokeLater(()->ticTacToeGUI.displayWaiting());
+        //TODO: handle exception
+        SwingUtilities.invokeLater(() -> {
+            try {
+                server.connect(this.username, this);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+            ticTacToeGUI.displayWaiting();
+        });
+
     }
 
     public String getSymbol() {
@@ -144,6 +158,5 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         TicTacToeClient ticTacToeClient = new TicTacToeClient(username, serverIP, serverPort);
 //        TicTacToeClient ticTacToeClient = new TicTacToeClient("jack", "localhost", 1099);
         TicTacToeGUI ticTacToeGUI = new TicTacToeGUI(ticTacToeClient);
-        ticTacToeClient.connectServer();
     }
 }

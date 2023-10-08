@@ -20,10 +20,15 @@ public class LeaderboardManager {
 
     public static synchronized void addPlayer(Player player) {
         players.put(player.getUsername(), player);
+        sortPlayers();
     }
 
     public static synchronized void updateScore(Player player, int delta) {
         player.addScore(delta);
+        sortPlayers();
+    }
+
+    private static void sortPlayers() {
         LinkedHashMap<String, Player> sortedPlayers = players.entrySet()
                 .stream()
                 .sorted((e1, e2) -> {
@@ -43,7 +48,7 @@ public class LeaderboardManager {
         players.putAll(sortedPlayers);
     }
 
-    public static int getRank(String username) {
+    public static synchronized int getRank(String username) {
         int rank = 1;
         for (String user : players.keySet()) {
             if (user.equals(username)) {
@@ -54,4 +59,3 @@ public class LeaderboardManager {
         return -1;
     }
 }
-

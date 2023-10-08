@@ -19,18 +19,21 @@ import java.util.concurrent.*;
 public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
     private static volatile List<Player> waitingPlayers = new Vector<>();
+    private static volatile List<Player> inactivePlayers = new Vector<>();
     private static volatile Map<Player, GameSession> activeGames = new HashMap<>();
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     protected IRemoteTicImpl() throws RemoteException {
+
     }
 
 
     @Override
     public void joinQueue(String username) throws RemoteException {
         synchronized (waitingPlayers) {
-            Player player=findPlayerByUsername(username);
+            Player player = findPlayerByUsername(username);
+            inactivePlayers.remove(player);
             waitingPlayers.add(player);
             if (waitingPlayers.size() >= 2) {
                 Player player1 = waitingPlayers.remove(0);
@@ -38,8 +41,8 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 GameSession session = new GameSession(player1, player2);
                 activeGames.put(player1, session);
                 activeGames.put(player2, session);
-                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol());
-                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol());
+                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(),LeaderboardManager.getRank(player1.getUsername()));
+                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(),LeaderboardManager.getRank(player2.getUsername()));
                 session.startGame();
             }
         }
@@ -51,7 +54,18 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         GameSession session = findGameSessionByPlayer(username);
         if (session != null) {
             try {
-                return session.makeMove(x, y, username);
+                GameStatus status = session.makeMove(x, y, username);
+                if (status.equals(GameStatus.FINISHED)) {
+                    inactivePlayers.add(session.getPlayer(username));
+                    inactivePlayers.add(session.getOtherPlayer(username));
+
+                    // Remove the game session
+                    activeGames.remove(session.getPlayer(username));
+                    activeGames.remove(session.getOtherPlayer(username));
+
+                } else if (status.equals(GameStatus.IN_GAME)) {
+
+                }
             } catch (RemoteException e) {
                 handlePlayerDisconnected(session.getPlayer(username));
             }
@@ -85,6 +99,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         if (player != null && player.getStatus() == PlayerStatus.WAITING_FOR_RECONNECT) {
             // Player is re-connecting
             try {
+                player.setClientCallback(clientCallback);
                 player.getDisconnectFuture().cancel(false);
                 player.setStatus(PlayerStatus.IN_GAME);
                 player.getClientCallback().updateBoard(getBoard(username));
@@ -119,8 +134,8 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 GameSession session = new GameSession(player1, player2);
                 activeGames.put(player1, session);
                 activeGames.put(player2, session);
-                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol());
-                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol());
+                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(),LeaderboardManager.getRank(player1.getUsername()));
+                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(),LeaderboardManager.getRank(player2.getUsername()));
                 session.startGame();
             }
         }
@@ -146,25 +161,30 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 return player;
             }
         }
+        for (Player player : inactivePlayers) {
+            if (player.getUsername().equals(username)) {
+                return player;
+            }
+        }
         return null;
     }
 
-//    private void startHeartbeatCheck() {
-//        scheduler.scheduleAtFixedRate(() -> {
-//            List<Player> disconnectedPlayers = new ArrayList<>();
-//            for (Player player : activeGames.keySet()) {
-//                try {
-//                    player.getClientCallback().ping();  // A simple method on the client's side to check if it's alive.
-//                } catch (RemoteException e) {
-//                    disconnectedPlayers.add(player);
-//                }
-//            }
-//
-//            for (Player player : disconnectedPlayers) {
-//                handlePlayerDisconnected(player);
-//            }
-//        }, 0, 10, TimeUnit.SECONDS);  // Run every 10 seconds
-//    }
+    private void startHeartbeatCheck() {
+        scheduler.scheduleAtFixedRate(() -> {
+            List<Player> disconnectedPlayers = new ArrayList<>();
+            for (Player player : activeGames.keySet()) {
+                try {
+                    player.getClientCallback().ping();  // A simple method on the client's side to check if it's alive.
+                } catch (RemoteException e) {
+                    disconnectedPlayers.add(player);
+                }
+            }
+
+            for (Player player : disconnectedPlayers) {
+                handlePlayerDisconnected(player);
+            }
+        }, 0, 3, TimeUnit.SECONDS);  // Run every 10 seconds
+    }
 
 
     public void handlePlayerDisconnected(Player player) {

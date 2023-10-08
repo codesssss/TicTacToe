@@ -1,5 +1,6 @@
 package org.tic.pojo;
 
+import org.tic.ENUM.GameStatus;
 import org.tic.LeaderboardManager;
 
 import java.rmi.RemoteException;
@@ -38,7 +39,7 @@ public class GameSession {
         player2.setRank(LeaderboardManager.getRank(player2.getUsername()));
     }
 
-    public boolean makeMove(int x, int y, String username) throws RemoteException {
+    public GameStatus makeMove(int x, int y, String username) throws RemoteException {
         if (board[x][y].isEmpty() && currentPlayer.getUsername().equals(username)) {
 
             board[x][y] = currentPlayer.getSymbol();
@@ -48,16 +49,15 @@ public class GameSession {
                 Player winner = getPlayer(username);
                 Player loser = getOtherPlayer(username);
 
+                updatePlayerAfterMove(username, x, y);
                 winner.getClientCallback().notifyWinner(username);
                 loser.getClientCallback().notifyWinner(username);
                 LeaderboardManager.updateScore(winner, 5);
                 LeaderboardManager.updateScore(loser, -5);
+
                 winner.setRank(LeaderboardManager.getRank(winner.getUsername()));
                 loser.setRank(LeaderboardManager.getRank(loser.getUsername()));
-//                player1.setStatus(PlayerStatus.ACTIVE);
-//                player2.setStatus(PlayerStatus.ACTIVE);
-
-                // TODO: End the game session
+                return GameStatus.FINISHED;
             } else if (isDraw()) {
                 player1.getClientCallback().notifyDraw();
                 player2.getClientCallback().notifyDraw();
@@ -65,23 +65,22 @@ public class GameSession {
                 LeaderboardManager.updateScore(player2, 2);
                 player1.setRank(LeaderboardManager.getRank(player1.getUsername()));
                 player2.setRank(LeaderboardManager.getRank(player2.getUsername()));
-
-                // TODO: End the game session
+                return GameStatus.FINISHED;
             } else {
                 updatePlayerAfterMove(username, x, y);
             }
-            return true;
+            return GameStatus.IN_GAME;
         }
         // TODO: Handle error situations and inform the player
-        return false;
+        return GameStatus.ERROR;
     }
 
     public void sendMessage(String username, String message) throws RemoteException {
         if (player1.getUsername().equals(username)) {
-            username="Rank#"+getPlayer(username).getRank()+" "+username;
+            username = "Rank#" + getPlayer(username).getRank() + " " + username;
             player2.getClientCallback().receiveChatMessage(new Message(username, message));
         } else {
-            username="Rank#"+getPlayer(username).getRank()+" "+username;
+            username = "Rank#" + getPlayer(username).getRank() + " " + username;
             player1.getClientCallback().receiveChatMessage(new Message(username, message));
         }
     }
@@ -90,7 +89,7 @@ public class GameSession {
         currentPlayer.getClientCallback().notifyTurn();
         Player otherPlayer = getOtherPlayer(currentPlayer.getUsername());
         int rank = currentPlayer.getRank();
-        otherPlayer.getClientCallback().resetPlayerLabel(String.valueOf(rank), currentPlayer.getUsername(), currentPlayer.getSymbol());
+        otherPlayer.getClientCallback().resetPlayerLabelAndTime(String.valueOf(rank), currentPlayer.getUsername(), currentPlayer.getSymbol());
     }
 
     public void updatePlayerAfterMove(String username, int x, int y) throws RemoteException {
@@ -100,7 +99,8 @@ public class GameSession {
         Player otherPlayer = getOtherPlayer(currentPlayer.getUsername());
         int rank = LeaderboardManager.getRank(currentPlayer.getUsername());
         currentPlayer.getClientCallback().notifyTurn();
-        otherPlayer.getClientCallback().resetPlayerLabel(String.valueOf(rank), currentPlayer.getUsername(), currentPlayer.getSymbol());
+        currentPlayer.getClientCallback().changeLabel(currentPlayer.getRank(), currentPlayer.getUsername(), currentPlayer.getSymbol());
+        otherPlayer.getClientCallback().resetPlayerLabelAndTime(String.valueOf(rank), currentPlayer.getUsername(), currentPlayer.getSymbol());
     }
 
 
