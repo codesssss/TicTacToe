@@ -185,9 +185,15 @@ public class TicTacToeGUI {
         JLabel chatLabel = new JLabel("Player Chat");
         rightPanel.add(chatLabel, BorderLayout.NORTH);
 
-        chatArea = new JTextArea(10, 20);
+        chatArea = new JTextArea(1, 20);
         chatArea.setEditable(false);
-        JScrollPane chatScroll = new JScrollPane(chatArea);
+
+        JPanel chatPanel = new JPanel(new BorderLayout());
+
+        chatPanel.add(chatArea, BorderLayout.PAGE_END);
+
+        JScrollPane chatScroll = new JScrollPane(chatPanel);
+
         rightPanel.add(chatScroll, BorderLayout.CENTER);
 
         chatInput = new JTextField();
@@ -232,8 +238,9 @@ public class TicTacToeGUI {
         chatInput.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {
-                if (chatInput.getText().equals("Type your message here")) {
+                if (chatInput.getText().equals("Type your message here, max 30 chars")) {
                     chatInput.setText("");
+                    chatInput.setForeground(Color.BLACK);
                     chatInput.setForeground(Color.BLACK);
                     chatInput.setFont(new Font("Arial", Font.PLAIN, 12));
                 }
@@ -242,7 +249,7 @@ public class TicTacToeGUI {
             @Override
             public void focusLost(FocusEvent e) {
                 if (chatInput.getText().isEmpty()) {
-                    chatInput.setText("Type your message here");
+                    chatInput.setText("Type your message here, max 30 chars");
                     chatInput.setForeground(Color.GRAY);
                     chatInput.setFont(new Font("Arial", Font.ITALIC, 12));
                 }
