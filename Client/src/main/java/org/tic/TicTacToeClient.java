@@ -30,8 +30,9 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
 
     public TicTacToeClient(String username, String serverIP, int serverPort) throws RemoteException, NotBoundException {
         this.username = username;
-        Registry registry = LocateRegistry.getRegistry(serverIP, serverPort);
-        server = (IRemoteTic) registry.lookup("TicTacToeService");
+        String url="rmi://"+serverIP+":"+serverPort+"/TicTacToeService";
+        Registry registry = LocateRegistry.getRegistry(serverIP);
+        server = (IRemoteTic) registry.lookup(url);
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 server.ping(); // Assuming the server has a ping method. If not, use any lightweight method.
