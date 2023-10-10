@@ -24,6 +24,7 @@ public interface ClientCallback extends Remote {
     void ping() throws RemoteException;
     void resetPlayerLabelAndTime(String rank, String name, String symbol) throws RemoteException;
     void changeLabel(int rank, String name, String symbol) throws RemoteException;
+    void notifyDuplicateUsername(String username) throws RemoteException;
 
 
 

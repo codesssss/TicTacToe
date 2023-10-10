@@ -150,6 +150,11 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         SwingUtilities.invokeLater(() -> ticTacToeGUI.changePlayerLabel(String.valueOf(rank), name, symbol));
     }
 
+    @Override
+    public void notifyDuplicateUsername(String username) throws RemoteException {
+        SwingUtilities.invokeLater(() -> ticTacToeGUI.notifyDuplicateUsername(username));
+    }
+
     private void handleServerUnavailability() {
         if (ticTacToeGUI != null) {
             SwingUtilities.invokeLater(() -> {

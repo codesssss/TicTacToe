@@ -120,6 +120,10 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         if (player != null) {
             // Player is re-connecting
             if (gameSession != null) {
+                if(!disconnectedButNotHandledPlayers.contains(player)){
+                    clientCallback.notifyDuplicateUsername(username);
+                    return false;
+                }
                 try {
                     Player otherPlayer = gameSession.getOtherPlayer(username);
                     Player currentPlayer = gameSession.getCurrentPlayer();

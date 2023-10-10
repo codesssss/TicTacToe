@@ -633,5 +633,21 @@ public class TicTacToeGUI {
         isMyTurn = myTurn;
     }
 
+    public void notifyDuplicateUsername(String username) {
+        JDialog dialog = new JDialog(frame, username+": "+"Username Already Used", false);
+        dialog.setLayout(new BorderLayout());
+        JLabel label = new JLabel("<html>This username is already in the game。<br>The program will exit in 5 seconds.</html>", JLabel.CENTER);
+        dialog.add(label, BorderLayout.CENTER);
+        dialog.setSize(300, 150);
+        dialog.setLocationRelativeTo(frame);  // Center the dialog
+        dialog.setVisible(true);
+
+        // Create a timer to close the application after 5 seconds
+        Timer exitTimer = new Timer(5000, e -> System.exit(0));
+
+        // Start the timer
+        exitTimer.setRepeats(false);
+        exitTimer.start();
+    }
 }
 
