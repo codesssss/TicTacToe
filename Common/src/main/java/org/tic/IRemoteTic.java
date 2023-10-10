@@ -15,8 +15,6 @@ public interface IRemoteTic extends Remote {
 
     void joinQueue(String username) throws RemoteException;
 
-    String[][] getBoard(String username) throws RemoteException;
-
     boolean connect(String username, ClientCallback callback) throws RemoteException;
 
     void sendMessage(String username, String message) throws RemoteException;
@@ -26,6 +24,5 @@ public interface IRemoteTic extends Remote {
     void ping() throws RemoteException;
 
     void sendTime(String username,int time) throws RemoteException;
-    //New Move
-    //Board
+
 }

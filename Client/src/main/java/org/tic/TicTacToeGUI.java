@@ -571,10 +571,6 @@ public class TicTacToeGUI {
         boardButtons[x][y].setBackground(Color.GRAY);
     }
 
-    public void updateMatchStarted(String opponentName, String yourSymbol) {
-        currentPlayerLabel.setText("Match started! Opponent: " + opponentName + ". Your symbol: " + yourSymbol);
-    }
-
     public void displayWaiting() {
         currentPlayerLabel.setText("Waiting for game...");
     }
@@ -624,6 +620,10 @@ public class TicTacToeGUI {
         // Start the timer
         exitTimer.setRepeats(false);
         exitTimer.start();
+    }
+
+    public void setMyTurn(boolean myTurn) {
+        isMyTurn = myTurn;
     }
 
 }

@@ -51,6 +51,7 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         this.symbol = symbol;
         this.rank = rank;
         if (ticTacToeGUI != null) {
+            ticTacToeGUI.setMyTurn(false);
             SwingUtilities.invokeLater(() -> ticTacToeGUI.changePlayerLabel(String.valueOf(currentRank), currentName, currentSymbol));
         }
     }
@@ -148,20 +149,6 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         SwingUtilities.invokeLater(() -> ticTacToeGUI.changePlayerLabel(String.valueOf(rank), name, symbol));
     }
 
-    @Override
-    public void updateBoard(String[][] board) {
-        if (ticTacToeGUI != null) {
-            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateBoard(board));
-        }
-    }
-
-    @Override
-    public void updateMessages(List<Message> messages) {
-        if (ticTacToeGUI != null) {
-            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateMessages(messages));
-        }
-    }
-
     private void handleServerUnavailability() {
         if (ticTacToeGUI != null) {
             SwingUtilities.invokeLater(() -> {
@@ -224,7 +211,6 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         int serverPort = Integer.parseInt(args[2]);
 
         TicTacToeClient ticTacToeClient = new TicTacToeClient(username, serverIP, serverPort);
-//        TicTacToeClient ticTacToeClient = new TicTacToeClient("jack", "localhost", 1099);
         TicTacToeGUI ticTacToeGUI = new TicTacToeGUI(ticTacToeClient);
     }
 }

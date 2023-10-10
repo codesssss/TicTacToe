@@ -18,7 +18,6 @@ public class TicTacToeServer {
     public static void main(String[] args) {
         try {
 
-
             Registry registry = LocateRegistry.createRegistry(PORT);
 
             IRemoteTic ticService = new IRemoteTicImpl();

@@ -68,15 +68,6 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
     }
 
     @Override
-    public String[][] getBoard(String username) throws RemoteException {
-        GameSession session = findGameSessionByPlayer(username);
-        if (session != null) {
-            return session.getBoard();
-        }
-        return new String[3][3];
-    }
-
-    @Override
     public void sendMessage(String username, String message) throws RemoteException {
         GameSession gameSession = findGameSessionByPlayer(username);
         try {
@@ -307,6 +298,5 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         activeGames.remove(player1);
         activeGames.remove(player2);
     }
-
 
 }

@@ -21,8 +21,6 @@ public interface ClientCallback extends Remote {
     void notifyReconnected() throws RemoteException;
     void updateReconnect(int rank, String name, String symbol, List<Message> messages, String[][] board,boolean isTurn,int time,int myRank,String mySymbol) throws RemoteException;
     void receiveChatMessage(Message message) throws RemoteException;
-    void updateBoard(String[][] board) throws RemoteException;
-    void updateMessages(List<Message> messages) throws RemoteException;
     void ping() throws RemoteException;
     void resetPlayerLabelAndTime(String rank, String name, String symbol) throws RemoteException;
     void changeLabel(int rank, String name, String symbol) throws RemoteException;
