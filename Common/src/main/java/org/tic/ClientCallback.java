@@ -1,7 +1,6 @@
 package org.tic;
 
 import org.tic.pojo.Message;
-import org.tic.pojo.Player;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -12,7 +11,7 @@ import java.util.List;
  * @date 5/10/2023 12:01 pm
  */
 public interface ClientCallback extends Remote {
-    void notifyMatchStarted(String opponentName, String yourSymbol,int rank) throws RemoteException;
+    void notifyMatchStarted(int currentRank, String currentName, String currentSymbol, int rank, String symbol) throws RemoteException;
     void notifyTurn() throws RemoteException;
     void updateOpponentMove(int x, int y) throws RemoteException;
     void notifyWinner(String winnerName) throws RemoteException;

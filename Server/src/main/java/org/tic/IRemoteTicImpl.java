@@ -1,9 +1,6 @@
 package org.tic;
 
-import org.tic.ClientCallback;
 import org.tic.ENUM.GameStatus;
-import org.tic.ENUM.PlayerStatus;
-import org.tic.IRemoteTic;
 import org.tic.pojo.GameSession;
 import org.tic.pojo.Player;
 
@@ -21,7 +18,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
     private static volatile List<Player> waitingPlayers = new Vector<>();
     private static volatile List<Player> inactivePlayers = new Vector<>();
     private static volatile Map<Player, GameSession> activeGames = new HashMap<>();
-
+    private static volatile List<Player> disconnectedButNotHandledPlayers = new Vector<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     protected IRemoteTicImpl() throws RemoteException {
@@ -41,8 +38,6 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 GameSession session = new GameSession(player1, player2);
                 activeGames.put(player1, session);
                 activeGames.put(player2, session);
-                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(), LeaderboardManager.getRank(player1.getUsername()));
-                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(), LeaderboardManager.getRank(player2.getUsername()));
                 session.startGame();
             }
         }
@@ -50,7 +45,6 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
     @Override
     public boolean makeMove(int x, int y, String username) {
-        //TODO: DISCONNECT AT SAME TIME
         GameSession session = findGameSessionByPlayer(username);
         if (session != null) {
             try {
@@ -96,6 +90,13 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
     public void quitGame(String username) throws RemoteException {
         GameSession session = findGameSessionByPlayer(username);
         Player loser = findPlayerByUsername(username);
+        if (session == null) {
+            waitingPlayers.remove(loser);
+            if (loser != null && !inactivePlayers.contains(loser)) {
+                inactivePlayers.add(loser);
+            }
+            return;
+        }
         Player winner = session.getOtherPlayer(username);
         winner.getClientCallback().notifyQuit();
         LeaderboardManager.updateScore(winner, 5);
@@ -117,7 +118,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
     @Override
     public void sendTime(String username, int time) throws RemoteException {
-        findPlayerByUsername(username).setTime(time);
+        findGameSessionByPlayer(username).setTime(time);
     }
 
     @Override
@@ -132,8 +133,12 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                     Player otherPlayer = gameSession.getOtherPlayer(username);
                     Player currentPlayer = gameSession.getCurrentPlayer();
                     Thread.sleep(1000);
-                    int time = otherPlayer.getTime();  // Get the time of the other player (the one that didn't disconnect)
-
+                    Integer time = gameSession.getTime();  // Get the time of the other player (the one that didn't disconnect)
+                    if (time == null) {
+                        terminateGameSession(gameSession);
+                        player.getDisconnectFuture().cancel(false);
+                        return false;
+                    }
                     boolean isTurn = currentPlayer.getUsername().equals(username);
                     player.setClientCallback(clientCallback);
                     player.getDisconnectFuture().cancel(false);
@@ -144,11 +149,17 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                     otherPlayer.getClientCallback().notifyReconnected();  // Notify the other player that this player has reconnected
 
                     return true;
-                } catch (Exception e) {
+                } catch (RemoteException e) {
                     e.printStackTrace();
+                    terminateGameSession(gameSession);
+                    player.getDisconnectFuture().cancel(false);
                     return false; // Failed to reconnect the player for some reason.
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    return false;
                 }
             } else {
+                player.setClientCallback(clientCallback);
                 inactivePlayers.remove(player);
                 joinQueue(player);
             }
@@ -156,8 +167,8 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
             // New player
             try {
                 player = new Player(username, clientCallback);
-                joinQueue(player);
                 LeaderboardManager.addPlayer(player);
+                joinQueue(player);
                 return true;
             } catch (Exception e) {
                 return false; // Failed to add a new player for some reason.
@@ -177,8 +188,6 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 GameSession session = new GameSession(player1, player2);
                 activeGames.put(player1, session);
                 activeGames.put(player2, session);
-                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(), LeaderboardManager.getRank(player1.getUsername()));
-                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(), LeaderboardManager.getRank(player2.getUsername()));
                 session.startGame();
             }
         }
@@ -224,43 +233,79 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
             }
 
             for (Player player : disconnectedPlayers) {
-                handlePlayerDisconnected(player);
+                if (!disconnectedButNotHandledPlayers.contains(player)) {
+                    disconnectedButNotHandledPlayers.add(player);
+                    handlePlayerDisconnected(player);
+                }
             }
-        }, 0, 3, TimeUnit.SECONDS);  // Run every 10 seconds
+        }, 0, 2, TimeUnit.SECONDS);
     }
 
 
     public void handlePlayerDisconnected(Player player) {
         GameSession session = findGameSessionByPlayer(player.getUsername());
-        Player otherPlayer = session.getOtherPlayer(player.getUsername());
-        try {
-            otherPlayer.getClientCallback().notifyCrash();
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        }
-        Runnable task = new Runnable() {
-            public void run() {
-                // Handle game termination logic here
-                GameSession session = activeGames.remove(player);
-                if (session != null) {
-                    // Notify the other player of victory and remove game session
-                    Player otherPlayer = session.getOtherPlayer(player.getUsername());
+        if (session != null) {
+            Player otherPlayer = session.getOtherPlayer(player.getUsername());
+            boolean otherPlayerDisconnected = false;
+            if (otherPlayer != null) {
+                try {
+                    otherPlayer.getClientCallback().ping();  // Check if the other player is also disconnected.
+                } catch (RemoteException e) {
+                    otherPlayerDisconnected = true;
+                }
+            }
+
+            if (otherPlayerDisconnected) {
+                // Both players are disconnected. Terminate the game session.
+                terminateGameSession(session);
+            } else {
+                // Only one player is disconnected. Notify the other player and schedule a task to handle game termination logic later.
+                try {
                     if (otherPlayer != null) {
-                        activeGames.remove(otherPlayer);
-                        LeaderboardManager.updateScore(player, 2);
-                        LeaderboardManager.updateScore(otherPlayer, 2);
-                        player.setRank(LeaderboardManager.getRank(player.getUsername()));
-                        otherPlayer.setRank(LeaderboardManager.getRank(otherPlayer.getUsername()));
-                        inactivePlayers.add(player);
-                        inactivePlayers.add(otherPlayer);
+                        otherPlayer.getClientCallback().notifyCrash();
                     }
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
                 }
 
-            }
-        };
+                Runnable task = new Runnable() {
+                    public void run() {
+                        disconnectedButNotHandledPlayers.remove(player);
+                        // Handle game termination logic here
 
-        ScheduledFuture<?> scheduledFuture = scheduler.schedule(task, 30, TimeUnit.SECONDS);
-        player.setDisconnectFuture(scheduledFuture);
+                        GameSession session = activeGames.remove(player);
+                        if (session != null) {
+                            // Notify the other player of victory and remove game session
+                            Player otherPlayer = session.getOtherPlayer(player.getUsername());
+                            if (otherPlayer != null) {
+                                activeGames.remove(otherPlayer);
+                                LeaderboardManager.updateScore(player, -2);  // Assuming a penalty for disconnecting
+                                LeaderboardManager.updateScore(otherPlayer, 2);  // Assuming a reward for the other player
+                                player.setRank(LeaderboardManager.getRank(player.getUsername()));
+                                otherPlayer.setRank(LeaderboardManager.getRank(otherPlayer.getUsername()));
+                                inactivePlayers.add(player);
+                                inactivePlayers.add(otherPlayer);
+                            }
+                        }
+                    }
+                };
+
+                ScheduledFuture<?> scheduledFuture = scheduler.schedule(task, 30, TimeUnit.SECONDS);
+                player.setDisconnectFuture(scheduledFuture);
+            }
+        }
+    }
+
+
+    private void terminateGameSession(GameSession gameSession) {
+        Player player1 = gameSession.getCurrentPlayer();
+        Player player2 = gameSession.getOtherPlayer(player1.getUsername());
+
+        inactivePlayers.add(player1);
+        inactivePlayers.add(player2);
+
+        activeGames.remove(player1);
+        activeGames.remove(player2);
     }
 
 

@@ -26,7 +26,6 @@ public class TicTacToeGUI {
     private JLabel timerValue;
     private JButton quitButton;
     private JLabel currentPlayerLabel;
-    private JDialog waitingDialog;
     private TicTacToeClient ticTacToeClient;
     private boolean isMyTurn = false;
     private volatile static Timer turnTimer;
@@ -192,7 +191,7 @@ public class TicTacToeGUI {
         rightPanel.add(chatScroll, BorderLayout.CENTER);
 
         chatInput = new JTextField();
-        chatInput.setText("Type your message here");
+        chatInput.setText("Type your message here, max 30 chars");
         chatInput.setForeground(Color.GRAY);
         chatInput.setFont(new Font("Arial", Font.ITALIC, 12));
 
@@ -221,6 +220,14 @@ public class TicTacToeGUI {
                 }
             }
         });
+        chatInput.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (chatInput.getText().length() >= 30) // limit text to 20 characters
+                    e.consume();
+            }
+        });
+
 
         chatInput.addFocusListener(new FocusListener() {
             @Override
@@ -437,7 +444,7 @@ public class TicTacToeGUI {
         }
     }
 
-    public void displayCrash() {
+    public synchronized void displayCrash() {
         // Initialize timer for crash countdown
         turnTimer.stop();
         try {
@@ -445,6 +452,12 @@ public class TicTacToeGUI {
         } catch (RemoteException e) {
             ticTacToeClient.handleRemoteException(e);
         }
+
+        if (crashTimer != null) {
+            crashTimer.stop();
+        }
+
+        crashTimeLeft = 30;
         crashTimer = new Timer(1000, e -> {
             crashTimeLeft--;
             if (crashPane != null) {
@@ -513,14 +526,14 @@ public class TicTacToeGUI {
         }
 
         // Show a dialog informing that the opponent has reconnected
-// Create a JDialog
+        // Create a JDialog
         JDialog dialog = new JDialog(frame, "Reconnection Successful", false);  // false makes it non-modal
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
-// Create a JLabel to hold your message
+        // Create a JLabel to hold your message
         JLabel label = new JLabel("Opponent has successfully reconnected!");
 
-// Optionally create a JButton if you want the user to be able to close the dialog
+        // Optionally create a JButton if you want the user to be able to close the dialog
         JButton button = new JButton("OK");
         button.addActionListener(new ActionListener() {
             @Override
@@ -529,24 +542,24 @@ public class TicTacToeGUI {
             }
         });
 
-// Create a JPanel to hold the label and button
+        // Create a JPanel to hold the label and button
         JPanel panel = new JPanel();
         panel.add(label);
         panel.add(button);
 
-// Add the panel to the dialog
+        // Add the panel to the dialog
         dialog.setContentPane(panel);
 
-// Pack the dialog to size it to fit the label and button
+        // Pack the dialog to size it to fit the label and button
         dialog.pack();
 
-// Optionally set the location of the dialog
+        // Optionally set the location of the dialog
         dialog.setLocationRelativeTo(frame);
 
-// Show the dialog
+        // Show the dialog
         dialog.setVisible(true);
 
-// Start the timer
+        // Start the timer
         turnTimer.start();
     }
 
@@ -564,11 +577,6 @@ public class TicTacToeGUI {
 
     public void displayWaiting() {
         currentPlayerLabel.setText("Waiting for game...");
-    }
-
-    public void displayConnectionFailed() {
-        isMyTurn = true;
-        JOptionPane.showMessageDialog(frame, "Failed", "Your Move", JOptionPane.INFORMATION_MESSAGE);
     }
 
     public void updateMessages(List<Message> messages) {
@@ -618,8 +626,5 @@ public class TicTacToeGUI {
         exitTimer.start();
     }
 
-    public void displayExistGame(int rank, String name, String symbol, List<Message> messages, String[][] board, boolean isTurn) {
-
-    }
 }
 

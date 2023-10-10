@@ -1,7 +1,6 @@
 package org.tic;
 
 import org.tic.pojo.Message;
-import org.tic.pojo.Player;
 
 import javax.swing.*;
 import java.rmi.NotBoundException;
@@ -48,11 +47,11 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
     }
 
     @Override
-    public void notifyMatchStarted(String opponentName, String yourSymbol, int rank) throws RemoteException {
-        this.symbol = yourSymbol;
+    public void notifyMatchStarted(int currentRank, String currentName, String currentSymbol, int rank, String symbol) throws RemoteException {
+        this.symbol = symbol;
         this.rank = rank;
         if (ticTacToeGUI != null) {
-            SwingUtilities.invokeLater(() -> ticTacToeGUI.updateMatchStarted(opponentName, yourSymbol));
+            SwingUtilities.invokeLater(() -> ticTacToeGUI.changePlayerLabel(String.valueOf(currentRank), currentName, currentSymbol));
         }
     }
 

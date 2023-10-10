@@ -17,6 +17,7 @@ public class GameSession {
     private String[][] board = new String[3][3];
     private List<Message> messages = new Vector<>();
     private Player currentPlayer;
+    private Integer time;
 
     public GameSession(Player player1, Player player2) {
         this.player1 = player1;
@@ -76,20 +77,24 @@ public class GameSession {
     public void sendMessage(String username, String message) throws RemoteException {
         if (player1.getUsername().equals(username)) {
             username = "Rank#" + getPlayer(username).getRank() + " " + username;
-            Message mes=new Message(username, message);
+            Message mes = new Message(username, message);
             messages.add(mes);
             player2.getClientCallback().receiveChatMessage(mes);
         } else {
             username = "Rank#" + getPlayer(username).getRank() + " " + username;
-            Message mes=new Message(username, message);
+            Message mes = new Message(username, message);
             messages.add(mes);
             player1.getClientCallback().receiveChatMessage(mes);
         }
     }
 
     public void startGame() throws RemoteException {
-        currentPlayer.getClientCallback().notifyTurn();
         Player otherPlayer = getOtherPlayer(currentPlayer.getUsername());
+        currentPlayer.getClientCallback().notifyMatchStarted(currentPlayer.getRank(), currentPlayer.getUsername(), currentPlayer.getSymbol(),
+                currentPlayer.getRank(), currentPlayer.getSymbol());
+        otherPlayer.getClientCallback().notifyMatchStarted(currentPlayer.getRank(), currentPlayer.getUsername(), currentPlayer.getSymbol(),
+                otherPlayer.getRank(), otherPlayer.getSymbol());
+        currentPlayer.getClientCallback().notifyTurn();
         int rank = currentPlayer.getRank();
         otherPlayer.getClientCallback().resetPlayerLabelAndTime(String.valueOf(rank), currentPlayer.getUsername(), currentPlayer.getSymbol());
     }
@@ -165,6 +170,15 @@ public class GameSession {
     public void setMessages(List<Message> messages) {
         this.messages = messages;
     }
+
+    public Integer getTime() {
+        return time;
+    }
+
+    public void setTime(Integer time) {
+        this.time = time;
+    }
+
 }
 
 
