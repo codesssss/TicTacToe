@@ -48,7 +48,6 @@ public class GameSession {
             if (isWinner(username)) {
                 Player winner = getPlayer(username);
                 Player loser = getOtherPlayer(username);
-
                 updatePlayerAfterMove(username, x, y);
                 winner.getClientCallback().notifyWinner(username);
                 loser.getClientCallback().notifyWinner(username);
@@ -71,17 +70,20 @@ public class GameSession {
             }
             return GameStatus.IN_GAME;
         }
-        // TODO: Handle error situations and inform the player
         return GameStatus.ERROR;
     }
 
     public void sendMessage(String username, String message) throws RemoteException {
         if (player1.getUsername().equals(username)) {
             username = "Rank#" + getPlayer(username).getRank() + " " + username;
-            player2.getClientCallback().receiveChatMessage(new Message(username, message));
+            Message mes=new Message(username, message);
+            messages.add(mes);
+            player2.getClientCallback().receiveChatMessage(mes);
         } else {
             username = "Rank#" + getPlayer(username).getRank() + " " + username;
-            player1.getClientCallback().receiveChatMessage(new Message(username, message));
+            Message mes=new Message(username, message);
+            messages.add(mes);
+            player1.getClientCallback().receiveChatMessage(mes);
         }
     }
 

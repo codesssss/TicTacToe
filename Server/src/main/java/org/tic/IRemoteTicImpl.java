@@ -25,7 +25,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     protected IRemoteTicImpl() throws RemoteException {
-
+        startHeartbeatCheck();
     }
 
 
@@ -41,8 +41,8 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 GameSession session = new GameSession(player1, player2);
                 activeGames.put(player1, session);
                 activeGames.put(player2, session);
-                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(),LeaderboardManager.getRank(player1.getUsername()));
-                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(),LeaderboardManager.getRank(player2.getUsername()));
+                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(), LeaderboardManager.getRank(player1.getUsername()));
+                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(), LeaderboardManager.getRank(player2.getUsername()));
                 session.startGame();
             }
         }
@@ -93,24 +93,66 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
     }
 
     @Override
+    public void quitGame(String username) throws RemoteException {
+        GameSession session = findGameSessionByPlayer(username);
+        Player loser = findPlayerByUsername(username);
+        Player winner = session.getOtherPlayer(username);
+        winner.getClientCallback().notifyQuit();
+        LeaderboardManager.updateScore(winner, 5);
+        LeaderboardManager.updateScore(loser, -5);
+        winner.setRank(LeaderboardManager.getRank(winner.getUsername()));
+        loser.setRank(LeaderboardManager.getRank(loser.getUsername()));
+        inactivePlayers.add(session.getPlayer(username));
+        inactivePlayers.add(session.getOtherPlayer(username));
+
+        // Remove the game session
+        activeGames.remove(session.getPlayer(username));
+        activeGames.remove(session.getOtherPlayer(username));
+    }
+
+    @Override
+    public void ping() throws RemoteException {
+
+    }
+
+    @Override
+    public void sendTime(String username, int time) throws RemoteException {
+        findPlayerByUsername(username).setTime(time);
+    }
+
+    @Override
     public boolean connect(String username, ClientCallback clientCallback) throws RemoteException {
         Player player = findPlayerByUsername(username);
+        GameSession gameSession = findGameSessionByPlayer(username);
 
-        if (player != null && player.getStatus() == PlayerStatus.WAITING_FOR_RECONNECT) {
+        if (player != null) {
             // Player is re-connecting
-            try {
-                player.setClientCallback(clientCallback);
-                player.getDisconnectFuture().cancel(false);
-                player.setStatus(PlayerStatus.IN_GAME);
-                player.getClientCallback().updateBoard(getBoard(username));
-                GameSession gameSession = findGameSessionByPlayer(username);
-                player.getClientCallback().updateMessages(gameSession.getMessages());
-                // Reconnecting requires: updating the board, restoring chat, resetting the timer.
-                return true;
-            } catch (Exception e) {
-                return false; // Failed to reconnect the player for some reason.
+            if (gameSession != null) {
+                try {
+                    Player otherPlayer = gameSession.getOtherPlayer(username);
+                    Player currentPlayer = gameSession.getCurrentPlayer();
+                    Thread.sleep(1000);
+                    int time = otherPlayer.getTime();  // Get the time of the other player (the one that didn't disconnect)
+
+                    boolean isTurn = currentPlayer.getUsername().equals(username);
+                    player.setClientCallback(clientCallback);
+                    player.getDisconnectFuture().cancel(false);
+
+                    player.getClientCallback().updateReconnect(currentPlayer.getRank(), currentPlayer.getUsername(),
+                            currentPlayer.getSymbol(), gameSession.getMessages(), gameSession.getBoard(), isTurn, time, player.getRank(), player.getSymbol());
+
+                    otherPlayer.getClientCallback().notifyReconnected();  // Notify the other player that this player has reconnected
+
+                    return true;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false; // Failed to reconnect the player for some reason.
+                }
+            } else {
+                inactivePlayers.remove(player);
+                joinQueue(player);
             }
-        } else if (player == null) {
+        } else {
             // New player
             try {
                 player = new Player(username, clientCallback);
@@ -125,6 +167,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         return false; // Default return in case no conditions above are met.
     }
 
+
     public void joinQueue(Player player) throws RemoteException {
         synchronized (waitingPlayers) {
             waitingPlayers.add(player);
@@ -134,8 +177,8 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                 GameSession session = new GameSession(player1, player2);
                 activeGames.put(player1, session);
                 activeGames.put(player2, session);
-                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(),LeaderboardManager.getRank(player1.getUsername()));
-                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(),LeaderboardManager.getRank(player2.getUsername()));
+                player1.getClientCallback().notifyMatchStarted(player2.getUsername(), player1.getSymbol(), LeaderboardManager.getRank(player1.getUsername()));
+                player2.getClientCallback().notifyMatchStarted(player1.getUsername(), player2.getSymbol(), LeaderboardManager.getRank(player2.getUsername()));
                 session.startGame();
             }
         }
@@ -188,21 +231,31 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
 
     public void handlePlayerDisconnected(Player player) {
-        player.setStatus(PlayerStatus.WAITING_FOR_RECONNECT);
-
+        GameSession session = findGameSessionByPlayer(player.getUsername());
+        Player otherPlayer = session.getOtherPlayer(player.getUsername());
+        try {
+            otherPlayer.getClientCallback().notifyCrash();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
         Runnable task = new Runnable() {
             public void run() {
-                if (player.getStatus() == PlayerStatus.WAITING_FOR_RECONNECT) {
-                    // Handle game termination logic here
-                    GameSession session = activeGames.remove(player);
-                    if (session != null) {
-                        // Notify the other player of victory and remove game session
-                        Player otherPlayer = session.getOtherPlayer(player.getUsername());
-                        if (otherPlayer != null) {
-                            otherPlayer.setStatus(PlayerStatus.ACTIVE); // or some other status indicating the win
-                        }
+                // Handle game termination logic here
+                GameSession session = activeGames.remove(player);
+                if (session != null) {
+                    // Notify the other player of victory and remove game session
+                    Player otherPlayer = session.getOtherPlayer(player.getUsername());
+                    if (otherPlayer != null) {
+                        activeGames.remove(otherPlayer);
+                        LeaderboardManager.updateScore(player, 2);
+                        LeaderboardManager.updateScore(otherPlayer, 2);
+                        player.setRank(LeaderboardManager.getRank(player.getUsername()));
+                        otherPlayer.setRank(LeaderboardManager.getRank(otherPlayer.getUsername()));
+                        inactivePlayers.add(player);
+                        inactivePlayers.add(otherPlayer);
                     }
                 }
+
             }
         };
 

@@ -18,6 +18,7 @@ public class Player implements Serializable {
     private Integer score;
     private Integer rank;
     private String symbol;
+    private Integer time;
     private ClientCallback clientCallback;
 
     public Player(String username, ClientCallback clientCallback) {
@@ -27,63 +28,71 @@ public class Player implements Serializable {
         this.status = PlayerStatus.ACTIVE;
     }
 
-    public String getSymbol() {
+    public synchronized String getSymbol() {
         return symbol;
     }
 
-    public void setSymbol(String symbol) {
+    public synchronized void setSymbol(String symbol) {
         this.symbol = symbol;
     }
 
-    public Integer getRank() {
+    public synchronized Integer getRank() {
         return rank;
     }
 
-    public void setRank(Integer rank) {
+    public synchronized void setRank(Integer rank) {
         this.rank = rank;
     }
 
-    public String getUsername() {
+    public synchronized String getUsername() {
         return username;
     }
 
-    public void setUsername(String username) {
+    public synchronized void setUsername(String username) {
         this.username = username;
     }
 
-    public Integer getScore() {
+    public synchronized Integer getScore() {
         return score;
     }
 
-    public void setScore(Integer score) {
+    public synchronized void setScore(Integer score) {
         this.score = score;
     }
 
-    public void addScore(int delta) {
+    public synchronized void addScore(int delta) {
         this.score += delta;
     }
 
-    public void setStatus(PlayerStatus status) {
+    public synchronized Integer getTime() {
+        return time;
+    }
+
+    public synchronized void setTime(Integer time) {
+        this.time = time;
+    }
+
+    public synchronized void setStatus(PlayerStatus status) {
         this.status = status;
     }
 
-    public PlayerStatus getStatus() {
+    public synchronized PlayerStatus getStatus() {
         return status;
     }
 
-    public ScheduledFuture<?> getDisconnectFuture() {
+    public synchronized ScheduledFuture<?> getDisconnectFuture() {
         return disconnectFuture;
     }
 
-    public void setDisconnectFuture(ScheduledFuture<?> disconnectFuture) {
+    public synchronized void setDisconnectFuture(ScheduledFuture<?> disconnectFuture) {
         this.disconnectFuture = disconnectFuture;
     }
 
-    public ClientCallback getClientCallback() {
+    public synchronized ClientCallback getClientCallback() {
         return clientCallback;
     }
 
-    public void setClientCallback(ClientCallback clientCallback) {
+    public synchronized void setClientCallback(ClientCallback clientCallback) {
         this.clientCallback = clientCallback;
     }
 }
