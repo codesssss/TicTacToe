@@ -3,6 +3,7 @@ package org.tic;
 import org.tic.pojo.Message;
 
 import javax.swing.*;
+import java.net.ConnectException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -32,7 +33,12 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         this.username = username;
         String url="rmi://"+serverIP+":"+serverPort+"/TicTacToeService";
         Registry registry = LocateRegistry.getRegistry(serverIP);
-        server = (IRemoteTic) registry.lookup(url);
+        try{
+        server = (IRemoteTic) registry.lookup(url);}
+        catch (Exception e){
+            System.out.println("Server unavailable");
+            System.exit(1);
+        }
         scheduler.scheduleAtFixedRate(() -> {
             try {
                 server.ping(); // Assuming the server has a ping method. If not, use any lightweight method.
