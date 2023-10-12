@@ -17,7 +17,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
     private static volatile List<Player> waitingPlayers = new Vector<>();
     private static volatile List<Player> inactivePlayers = new Vector<>();
-    private static volatile Map<Player, GameSession> activeGames = new HashMap<>();
+    private static volatile ConcurrentHashMap<Player, GameSession> activeGames = new ConcurrentHashMap<>();
     private static volatile List<Player> disconnectedButNotHandledPlayers = new Vector<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
