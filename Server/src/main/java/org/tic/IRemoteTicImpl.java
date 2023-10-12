@@ -118,12 +118,15 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         GameSession gameSession = findGameSessionByPlayer(username);
 
         if (player != null) {
+            //Player already in the queue or game
+            if (!disconnectedButNotHandledPlayers.contains(player) && findActivePlayerByUsername(username) != null) {
+                clientCallback.notifyDuplicateUsername(username);
+                return false;
+            }
             // Player is re-connecting
             if (gameSession != null) {
-                if(!disconnectedButNotHandledPlayers.contains(player)){
-                    clientCallback.notifyDuplicateUsername(username);
-                    return false;
-                }
+                /* Already in the game and disconnect not handled */
+                disconnectedButNotHandledPlayers.remove(player);
                 try {
                     Player otherPlayer = gameSession.getOtherPlayer(username);
                     Player currentPlayer = gameSession.getCurrentPlayer();
@@ -145,6 +148,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
                     return true;
                 } catch (RemoteException e) {
+                    //both of player are offline
                     e.printStackTrace();
                     terminateGameSession(gameSession);
                     player.getDisconnectFuture().cancel(false);
@@ -154,6 +158,8 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                     return false;
                 }
             } else {
+                //Player in the waiting list
+                disconnectedButNotHandledPlayers.remove(player);
                 player.setClientCallback(clientCallback);
                 inactivePlayers.remove(player);
                 joinQueue(player);
@@ -216,10 +222,32 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
         return null;
     }
 
+    private Player findActivePlayerByUsername(String username) {
+        for (Player player : activeGames.keySet()) {
+            if (player.getUsername().equals(username)) {
+                return player;
+            }
+        }
+        for (Player player : waitingPlayers) {
+            if (player.getUsername().equals(username)) {
+                return player;
+            }
+        }
+        return null;
+    }
+
     private void startHeartbeatCheck() {
         scheduler.scheduleAtFixedRate(() -> {
             List<Player> disconnectedPlayers = new ArrayList<>();
             for (Player player : activeGames.keySet()) {
+                try {
+                    player.getClientCallback().ping();  // A simple method on the client's side to check if it's alive.
+                } catch (RemoteException e) {
+                    disconnectedPlayers.add(player);
+                }
+            }
+
+            for (Player player : waitingPlayers) {
                 try {
                     player.getClientCallback().ping();  // A simple method on the client's side to check if it's alive.
                 } catch (RemoteException e) {
@@ -239,6 +267,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
     public void handlePlayerDisconnected(Player player) {
         GameSession session = findGameSessionByPlayer(player.getUsername());
+        //in game
         if (session != null) {
             Player otherPlayer = session.getOtherPlayer(player.getUsername());
             boolean otherPlayerDisconnected = false;
@@ -263,6 +292,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
                     throw new RuntimeException(e);
                 }
 
+                //30s to draw
                 Runnable task = new Runnable() {
                     public void run() {
                         disconnectedButNotHandledPlayers.remove(player);
@@ -287,6 +317,12 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
 
                 ScheduledFuture<?> scheduledFuture = scheduler.schedule(task, 30, TimeUnit.SECONDS);
                 player.setDisconnectFuture(scheduledFuture);
+            }
+        } else {
+            //in waiting
+            if (waitingPlayers.contains(player)) {
+                waitingPlayers.remove(player);
+                inactivePlayers.add(player);
             }
         }
     }

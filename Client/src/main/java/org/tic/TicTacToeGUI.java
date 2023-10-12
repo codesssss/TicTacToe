@@ -215,9 +215,11 @@ public class TicTacToeGUI {
                         ex.printStackTrace();
                     }
                 }
-
+                if(ticTacToeClient.getRank()!=null){
+                chatArea.append("Rank#"+ticTacToeClient.getRank()+" "+ticTacToeClient.getUsername()+": "+ message + "\n");}
+                else
                 // Add the new message
-                chatArea.append("You: " + message + "\n");
+                {chatArea.append(ticTacToeClient.getUsername()+": "+ message + "\n");}
                 chatInput.setText("");
                 try {
                     ticTacToeClient.getServer().sendMessage(ticTacToeClient.getUsername(), message);
