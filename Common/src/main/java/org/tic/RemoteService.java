@@ -1,8 +1,5 @@
 package org.tic;
 
-import org.tic.ENUM.GameStatus;
-import org.tic.pojo.Player;
-
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
@@ -10,7 +7,7 @@ import java.rmi.RemoteException;
  * @author Xuhang Shi
  * @date 4/10/2023 9:14 pm
  */
-public interface IRemoteTic extends Remote {
+public interface RemoteService extends Remote {
     boolean makeMove(int x, int y, String username) throws RemoteException;
 
     void joinQueue(String username) throws RemoteException;

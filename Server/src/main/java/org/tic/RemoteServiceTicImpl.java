@@ -13,7 +13,7 @@ import java.util.concurrent.*;
  * @author Xuhang Shi
  * @date 4/10/2023 9:19 pm
  */
-public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
+public class RemoteServiceTicImpl extends UnicastRemoteObject implements RemoteService {
 
     private static volatile List<Player> waitingPlayers = new Vector<>();
     private static volatile List<Player> inactivePlayers = new Vector<>();
@@ -21,7 +21,7 @@ public class IRemoteTicImpl extends UnicastRemoteObject implements IRemoteTic {
     private static volatile List<Player> disconnectedButNotHandledPlayers = new Vector<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    protected IRemoteTicImpl() throws RemoteException {
+    protected RemoteServiceTicImpl() throws RemoteException {
         startHeartbeatCheck();
     }
 

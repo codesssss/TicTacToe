@@ -2,10 +2,8 @@ package org.tic;
 
 import org.tic.pojo.Player;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.*;
+
 
 /**
  * @author Xuhang Shi
@@ -13,49 +11,50 @@ import java.util.stream.Collectors;
  */
 public class LeaderboardManager {
 
-    private static volatile ConcurrentHashMap<String, Player> players = new ConcurrentHashMap<>();
+    private static final List<Player> players = Collections.synchronizedList(new ArrayList<>());
 
     private LeaderboardManager() {
     }
 
-    public static synchronized void addPlayer(Player player) {
-        players.put(player.getUsername(), player);
-        sortPlayers();
-    }
-
-    public static synchronized void updateScore(Player player, int delta) {
-        player.addScore(delta);
-        sortPlayers();
-    }
-
-    private static void sortPlayers() {
-        LinkedHashMap<String, Player> sortedPlayers = players.entrySet()
-                .stream()
-                .sorted((e1, e2) -> {
-                    int scoreComparison = Integer.compare(e2.getValue().getScore(), e1.getValue().getScore());
-                    if (scoreComparison == 0) {
-                        return e1.getKey().compareTo(e2.getKey());
-                    }
-                    return scoreComparison;
-                })
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (e1, e2) -> e1,
-                        LinkedHashMap::new
-                ));
-        players.clear();
-        players.putAll(sortedPlayers);
-    }
-
-    public static synchronized int getRank(String username) {
-        int rank = 1;
-        for (String user : players.keySet()) {
-            if (user.equals(username)) {
-                return rank;
-            }
-            rank++;
+    public static void addPlayer(Player player) {
+        synchronized (players) {
+            players.add(player);
+            sortAndRankPlayers();
         }
-        return -1;
+    }
+
+    public static void updateScore(Player player, int delta) {
+        synchronized (players) {
+            player.addScore(delta);
+            sortAndRankPlayers();
+        }
+    }
+
+    private static void sortAndRankPlayers() {
+        synchronized (players) {
+            players.sort((p1, p2) -> {
+                int scoreComparison = Integer.compare(p2.getScore(), p1.getScore());
+                if (scoreComparison == 0) {
+                    return p1.getUsername().compareTo(p2.getUsername());
+                }
+                return scoreComparison;
+            });
+
+            int rank = 1;
+            for (Player player : players) {
+                player.setRank(rank++);
+            }
+        }
+    }
+
+    public static int getRank(String username) {
+        synchronized (players) {
+            for (Player player : players) {
+                if (player.getUsername().equals(username)) {
+                    return player.getRank();
+                }
+            }
+            return -1; // Player not found
+        }
     }
 }

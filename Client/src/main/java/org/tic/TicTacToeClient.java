@@ -3,7 +3,6 @@ package org.tic;
 import org.tic.pojo.Message;
 
 import javax.swing.*;
-import java.net.ConnectException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -20,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class TicTacToeClient extends UnicastRemoteObject implements ClientCallback {
 
-    private IRemoteTic server;
+    private RemoteService server;
     private Integer rank;
     private String username;
     private String symbol;
@@ -34,7 +33,7 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         String url="rmi://"+serverIP+":"+serverPort+"/TicTacToeService";
         Registry registry = LocateRegistry.getRegistry(serverIP);
         try{
-        server = (IRemoteTic) registry.lookup(url);}
+        server = (RemoteService) registry.lookup(url);}
         catch (Exception e){
             System.out.println("Server unavailable");
             System.exit(1);
@@ -195,7 +194,7 @@ public class TicTacToeClient extends UnicastRemoteObject implements ClientCallba
         server.sendMessage(username, message);
     }
 
-    public IRemoteTic getServer() {
+    public RemoteService getServer() {
         return server;
     }
 

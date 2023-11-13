@@ -41,7 +41,7 @@ public class TicTacToeServer {
             // Create or get the registry
             Registry registry = LocateRegistry.createRegistry(port);
 
-            IRemoteTic ticService = new IRemoteTicImpl();
+            RemoteService ticService = new RemoteServiceTicImpl();
 
             // Bind the service to the URL
             registry.bind(url, ticService);
