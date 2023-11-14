@@ -29,11 +29,11 @@ This project presents a distributed TicTacToe game developed in Java, utilizing 
 
 ## Installation
 
-1. Clone the repository: `git clone [repository URL]`
-2. Navigate to the project directory: `cd [project directory]`
-3. Compile the Java files: `javac *.java`
-4. Run the server: `java Server`
-5. Launch the client application: `java Client`
+1. Clone the repository: `git clone git@github.com:codesssss/TicTacToe.git`
+2. Navigate to the project directory: `cd TicTacToe`
+3. Compile the Java files: `maven package`
+4. Run the server: `java -jar server.jar <ip> <port>`
+5. Launch the client application: `java -jar client.jar <username> <server_ip> <server_port>`
 
 ## Contributions
 
